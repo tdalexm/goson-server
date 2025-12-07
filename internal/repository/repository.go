@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/tdalexm/goson-server/internal/domain"
 )
@@ -84,4 +85,64 @@ func (sr *StateRepository) GetByID(resource, id string) (domain.Record, error) {
 		domain.ErrCodeNotFound,
 		fmt.Sprintf("%s with id '%s' not found", resource, id),
 	)
+}
+
+func (sr *StateRepository) Create(resource string, record domain.Record) (string, error) {
+	var collection []domain.Record
+	var exists bool
+	if collection, exists = sr.data[resource]; !exists {
+		return "", domain.NewAppError(
+			domain.ErrCodeNotFound,
+			fmt.Sprintf("resource '%s' not found in json", resource),
+		)
+	}
+
+	if _, hasID := record["id"]; !hasID {
+		newID := sr.generateNextID(collection)
+		record["id"] = newID
+	}
+
+	id, isStr := record["id"].(string)
+	if !isStr {
+		return "", domain.NewAppError(
+			domain.ErrValidation,
+			"ID must be a string. Ex: 'id':'25' ",
+		)
+	}
+
+	for _, element := range collection {
+		elementID, ok := element["id"].(string)
+		if ok && elementID == id {
+			return "", domain.NewAppError(
+				domain.ErrValidation,
+				fmt.Sprintf("ID '%s' is duplicated. ID must be unique.", id),
+			)
+		}
+	}
+
+	sr.data[resource] = append(sr.data[resource], record)
+
+	return id, nil
+}
+
+func (sr *StateRepository) generateNextID(collection []domain.Record) string {
+	if len(collection) == 0 {
+		return "1"
+	}
+
+	maxID := 0
+	for _, record := range collection {
+		if id, ok := record["id"].(int); ok {
+			if id > maxID {
+				maxID = id
+			}
+		} else if idStr, ok := record["id"].(string); ok {
+			if id, err := strconv.Atoi(idStr); err == nil && id > maxID {
+				maxID = id
+			}
+		}
+	}
+
+	nextID := maxID + 1
+	return strconv.Itoa(nextID)
 }

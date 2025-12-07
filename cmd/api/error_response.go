@@ -28,4 +28,5 @@ var ErrCodeMapping map[string]int = map[string]int{
 	domain.ErrFieldNotString: http.StatusBadRequest,
 	domain.ErrWrongParams:    http.StatusBadRequest,
 	domain.ErrSearchByID:     http.StatusBadRequest,
+	domain.ErrValidation:     http.StatusBadRequest,
 }

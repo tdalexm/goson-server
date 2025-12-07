@@ -10,6 +10,7 @@ const (
 	ErrFieldNotString = "field_not_string"
 	ErrWrongParams    = "wrong_params"
 	ErrSearchByID     = "invalid_search_by_id"
+	ErrValidation     = "validation_error"
 )
 
 type AppError struct {

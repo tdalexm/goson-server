@@ -1,6 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"net/http"
+	"slices"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/tdalexm/goson-server/internal/domain"
 	"github.com/tdalexm/goson-server/internal/services"
@@ -10,6 +15,7 @@ type Handler struct {
 	listSR       services.ListService
 	listFilterSR services.ListFilterService
 	getSR        services.GetService
+	createSR     services.CreateService
 }
 
 func (h *Handler) List(c *gin.Context) {
@@ -47,8 +53,16 @@ func (h *Handler) List(c *gin.Context) {
 	} else {
 		result, err = h.listSR.Execute(resource)
 	}
+
 	if err != nil {
 		ReturnErrorResponse(c, err)
+		return
+	}
+
+	sort := strings.ToLower(c.Query("sort"))
+	if sort == "desc" {
+		slices.Reverse(result)
+		c.JSON(200, result)
 		return
 	}
 
@@ -65,4 +79,42 @@ func (h *Handler) Get(c *gin.Context) {
 	}
 
 	c.JSON(200, result)
+}
+
+func (h *Handler) Create(c *gin.Context) {
+	resource := c.Param("resource")
+	var record domain.Record
+	if err := c.ShouldBindJSON(&record); err != nil {
+		if err.Error() == "EOF" {
+			ReturnErrorResponse(c, domain.NewAppError(
+				domain.ErrValidation,
+				"Request body cannot be empty",
+			))
+			return
+		}
+		ReturnErrorResponse(c, domain.NewAppError(
+			domain.ErrValidation,
+			fmt.Sprintf("Invalid JSON format: %v", err),
+		))
+		return
+	}
+
+	if len(record) == 0 {
+		ReturnErrorResponse(c, domain.NewAppError(
+			domain.ErrValidation,
+			"Request body cannot be empty",
+		))
+		return
+	}
+
+	id, err := h.createSR.Execute(resource, record)
+	if err != nil {
+		ReturnErrorResponse(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":  fmt.Sprintf("Record with ID '%s' added to %s resource", id, resource),
+		"location": fmt.Sprintf("/%s/%s", resource, id),
+	})
 }
