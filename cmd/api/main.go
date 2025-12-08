@@ -14,6 +14,7 @@ import (
 func main() {
 	// Comment for debug mode
 	gin.SetMode(gin.ReleaseMode)
+
 	dbPath := flag.String("db", "db.json", "Path to JSON database file")
 	port := flag.String("port", "8080", "Port to run the server")
 	help := flag.Bool("help", false, "Show help")
@@ -43,11 +44,13 @@ func main() {
 		listFilterSR: *services.NewListFilterService(stateRepo),
 		getSR:        *services.NewGetService(stateRepo),
 		createSR:     *services.NewCreateService(stateRepo),
+		updateSR:     *services.NewUpdateService(stateRepo),
 	}
 
 	router.GET("/:resource", handler.List)
 	router.GET("/:resource/:id", handler.Get)
 	router.POST("/:resource", handler.Create)
+	router.POST("/:resource/:id", handler.Update)
 
 	log.Fatalln(router.Run(":" + *port))
 }

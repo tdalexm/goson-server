@@ -5,4 +5,5 @@ type Repository interface {
 	ListWithFilter(resource string, filter Filter) ([]Record, error)
 	GetByID(resource, id string) (Record, error)
 	Create(resource string, record Record) (string, error)
+	Update(resource, id string, record Record) (string, error)
 }

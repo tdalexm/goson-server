@@ -16,6 +16,7 @@ type Handler struct {
 	listFilterSR services.ListFilterService
 	getSR        services.GetService
 	createSR     services.CreateService
+	updateSR     services.UpdateService
 }
 
 func (h *Handler) List(c *gin.Context) {
@@ -116,5 +117,36 @@ func (h *Handler) Create(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{
 		"message":  fmt.Sprintf("Record with ID '%s' added to %s resource", id, resource),
 		"location": fmt.Sprintf("/%s/%s", resource, id),
+	})
+}
+
+func (h *Handler) Update(c *gin.Context) {
+	resource := c.Param("resource")
+	id := c.Param("id")
+
+	var record domain.Record
+	if err := c.ShouldBindJSON(&record); err != nil {
+		if err.Error() == "EOF" {
+			ReturnErrorResponse(c, domain.NewAppError(
+				domain.ErrValidation,
+				"Request body cannot be empty",
+			))
+			return
+		}
+		ReturnErrorResponse(c, domain.NewAppError(
+			domain.ErrValidation,
+			fmt.Sprintf("Invalid JSON format: %v", err),
+		))
+		return
+	}
+
+	id, err := h.updateSR.Execute(resource, id, record)
+	if err != nil {
+		ReturnErrorResponse(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": fmt.Sprintf("Updated record with ID '%s'", id),
 	})
 }

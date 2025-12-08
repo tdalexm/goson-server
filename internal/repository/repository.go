@@ -125,6 +125,37 @@ func (sr *StateRepository) Create(resource string, record domain.Record) (string
 	return id, nil
 }
 
+func (sr *StateRepository) Update(resource, id string, record domain.Record) (string, error) {
+	res, exists := sr.data[resource]
+	if !exists {
+		return "", domain.NewAppError(
+			domain.ErrCodeNotFound,
+			fmt.Sprintf("resource '%s' not found in json", resource),
+		)
+	}
+
+	if _, hasID := record["id"]; hasID {
+		return "", domain.NewAppError(
+			domain.ErrValidation,
+			"Cannot update the ID field",
+		)
+	}
+
+	for i, element := range res {
+		elementID, ok := element["id"].(string)
+		if ok && elementID == id {
+			record["id"] = id
+			sr.data[resource][i] = record
+			return id, nil
+		}
+	}
+
+	return "", domain.NewAppError(
+		domain.ErrCodeNotFound,
+		fmt.Sprintf("%s with ID '%s' not found", resource, id),
+	)
+}
+
 func (sr *StateRepository) generateNextID(collection []domain.Record) string {
 	if len(collection) == 0 {
 		return "1"
