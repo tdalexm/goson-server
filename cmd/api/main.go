@@ -12,6 +12,8 @@ import (
 )
 
 func main() {
+	// Comment for debug mode
+	gin.SetMode(gin.ReleaseMode)
 	dbPath := flag.String("db", "db.json", "Path to JSON database file")
 	port := flag.String("port", "8080", "Port to run the server")
 	help := flag.Bool("help", false, "Show help")
