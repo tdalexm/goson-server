@@ -40,17 +40,19 @@ func main() {
 	stateRepo := repository.NewStateRepository(data)
 
 	handler := &Handler{
-		listSR:       *services.NewListService(stateRepo),
-		listFilterSR: *services.NewListFilterService(stateRepo),
-		getSR:        *services.NewGetService(stateRepo),
-		createSR:     *services.NewCreateService(stateRepo),
-		updateSR:     *services.NewUpdateService(stateRepo),
+		listSR:        *services.NewListService(stateRepo),
+		listFilterSR:  *services.NewListFilterService(stateRepo),
+		getSR:         *services.NewGetService(stateRepo),
+		createSR:      *services.NewCreateService(stateRepo),
+		updateSR:      *services.NewUpdateService(stateRepo),
+		updateFieldSR: *services.NewUpdateFieldsService(stateRepo),
 	}
 
 	router.GET("/:resource", handler.List)
 	router.GET("/:resource/:id", handler.Get)
 	router.POST("/:resource", handler.Create)
 	router.POST("/:resource/:id", handler.Update)
+	router.PATCH("/:resource/:id", handler.Update)
 
 	log.Fatalln(router.Run(":" + *port))
 }

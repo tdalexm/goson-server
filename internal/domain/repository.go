@@ -6,4 +6,5 @@ type Repository interface {
 	GetByID(resource, id string) (Record, error)
 	Create(resource string, record Record) (string, error)
 	Update(resource, id string, record Record) (string, error)
+	UpdateFields(resource, id string, record Record) (string, error)
 }

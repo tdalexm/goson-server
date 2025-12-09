@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"slices"
 	"strings"
@@ -12,11 +13,12 @@ import (
 )
 
 type Handler struct {
-	listSR       services.ListService
-	listFilterSR services.ListFilterService
-	getSR        services.GetService
-	createSR     services.CreateService
-	updateSR     services.UpdateService
+	listSR        services.ListService
+	listFilterSR  services.ListFilterService
+	getSR         services.GetService
+	createSR      services.CreateService
+	updateSR      services.UpdateService
+	updateFieldSR services.UpdateFieldsService
 }
 
 func (h *Handler) List(c *gin.Context) {
@@ -140,13 +142,22 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	id, err := h.updateSR.Execute(resource, id, record)
+	var updatedID string
+	var err error
+
+	log.Println(c.Request.Method)
+	if c.Request.Method == "PATCH" {
+		updatedID, err = h.updateFieldSR.Execute(resource, id, record)
+	} else {
+		updatedID, err = h.updateSR.Execute(resource, id, record)
+	}
+
 	if err != nil {
 		ReturnErrorResponse(c, err)
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message": fmt.Sprintf("Updated record with ID '%s'", id),
+		"message": fmt.Sprintf("Updated record with ID '%s'", updatedID),
 	})
 }
