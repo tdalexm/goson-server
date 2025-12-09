@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"slices"
 	"strings"
@@ -145,7 +144,6 @@ func (h *Handler) Update(c *gin.Context) {
 	var updatedID string
 	var err error
 
-	log.Println(c.Request.Method)
 	if c.Request.Method == "PATCH" {
 		updatedID, err = h.updateFieldSR.Execute(resource, id, record)
 	} else {
