@@ -61,10 +61,13 @@ func (h *Handler) List(c *gin.Context) {
 		return
 	}
 
+	if len(result) == 0 {
+		c.JSON(http.StatusNoContent, result)
+	}
 	sort := strings.ToLower(c.Query("sort"))
 	if sort == "desc" {
 		slices.Reverse(result)
-		c.JSON(200, result)
+		c.JSON(http.StatusOK, result)
 		return
 	}
 
@@ -80,7 +83,7 @@ func (h *Handler) Get(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, result)
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *Handler) Create(c *gin.Context) {
@@ -155,7 +158,7 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Updated record with ID '%s'", updatedID),
 	})
 }

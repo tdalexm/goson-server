@@ -53,17 +53,6 @@ func (sr *StateRepository) ListWithFilter(resource string, filter domain.Filter)
 		}
 	}
 
-	if len(records) == 0 {
-		searchValue := filter.Value
-		if filter.Contains != "" {
-			searchValue = filter.Contains
-		}
-		return nil, domain.NewAppError(
-			domain.ErrCodeNotFound,
-			fmt.Sprintf("%s with %s '%s' not found", resource, filter.Field, searchValue),
-		)
-	}
-
 	return records, nil
 }
 
