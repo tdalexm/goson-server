@@ -189,6 +189,31 @@ func (sr *StateRepository) UpdateFields(resource, id string, record domain.Recor
 	return id, nil
 }
 
+func (sr *StateRepository) Delete(resource, id string) (string, error) {
+	res, exists := sr.data[resource]
+	if !exists {
+		return "", domain.NewAppError(
+			domain.ErrCodeNotFound,
+			fmt.Sprintf("resource '%s' not found in json", resource),
+		)
+	}
+	foundIndex := -1
+	for i, element := range res {
+		if element["id"] == id {
+			foundIndex = i
+			break
+		}
+	}
+	if foundIndex == -1 {
+		return "", domain.NewAppError(
+			domain.ErrCodeNotFound,
+			fmt.Sprintf("%s with ID '%s' not found", resource, id),
+		)
+	}
+	sr.data[resource] = append(res[:foundIndex], res[foundIndex+1:]...)
+	return id, nil
+}
+
 func (sr *StateRepository) generateNextID(collection []domain.Record) string {
 	if len(collection) == 0 {
 		return "1"

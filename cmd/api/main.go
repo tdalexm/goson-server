@@ -46,6 +46,7 @@ func main() {
 		createSR:      *services.NewCreateService(stateRepo),
 		updateSR:      *services.NewUpdateService(stateRepo),
 		updateFieldSR: *services.NewUpdateFieldsService(stateRepo),
+		deleteSR:      *services.NewDeleteService(stateRepo),
 	}
 
 	router.GET("/:resource", handler.List)
@@ -53,6 +54,7 @@ func main() {
 	router.POST("/:resource", handler.Create)
 	router.POST("/:resource/:id", handler.Update)
 	router.PATCH("/:resource/:id", handler.Update)
+	router.DELETE("/:resource/:id", handler.Delete)
 
 	log.Fatalln(router.Run(":" + *port))
 }

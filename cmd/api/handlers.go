@@ -18,6 +18,7 @@ type Handler struct {
 	createSR      services.CreateService
 	updateSR      services.UpdateService
 	updateFieldSR services.UpdateFieldsService
+	deleteSR      services.DeleteService
 }
 
 func (h *Handler) List(c *gin.Context) {
@@ -64,6 +65,7 @@ func (h *Handler) List(c *gin.Context) {
 	if len(result) == 0 {
 		c.JSON(http.StatusNoContent, result)
 	}
+
 	sort := strings.ToLower(c.Query("sort"))
 	if sort == "desc" {
 		slices.Reverse(result)
@@ -160,5 +162,20 @@ func (h *Handler) Update(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Updated record with ID '%s'", updatedID),
+	})
+}
+
+func (h *Handler) Delete(c *gin.Context) {
+	resource := c.Param("resource")
+	id := c.Param("id")
+
+	deletedID, err := h.deleteSR.Execute(resource, id)
+	if err != nil {
+		ReturnErrorResponse(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": fmt.Sprintf("Deleted record with ID '%s'", deletedID),
 	})
 }
