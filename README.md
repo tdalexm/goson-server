@@ -70,7 +70,7 @@ go build -o goson-server
 |-----------|------|-------------|---------|
 | `field` | string | Campo por el cual filtrar | `?field=name` |
 | `value` | string | Valor exacto para filtrar. | `?field=name&value=Charmander` |
-| `contains` | string | Texto a buscar dentro del campo (búsqueda parcial) | `?field=type&value=grass` |
+| `contains` | string | Texto a buscar dentro del campo (búsqueda parcial) | `?field=type&contains=grass` |
 
 !> [!NOTE]
 > Las busquedas **no** son case-sensitive.
