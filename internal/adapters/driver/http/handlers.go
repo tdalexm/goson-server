@@ -1,4 +1,4 @@
-package main
+package driverhttp
 
 import (
 	"fmt"
@@ -12,17 +12,17 @@ import (
 )
 
 type Handler struct {
-	listSR        services.ListService
-	listFilterSR  services.ListFilterService
-	getSR         services.GetService
-	createSR      services.CreateService
-	updateSR      services.UpdateService
-	updateFieldSR services.UpdateFieldsService
-	deleteSR      services.DeleteService
+	ListSR        services.ListService
+	ListFilterSR  services.ListFilterService
+	GetSR         services.GetService
+	CreateSR      services.CreateService
+	UpdateSR      services.UpdateService
+	UpdateFieldSR services.UpdateFieldsService
+	DeleteSR      services.DeleteService
 }
 
 func (h *Handler) List(c *gin.Context) {
-	resource := c.Param("resource")
+	collection := c.Param("collection")
 
 	var result []domain.Record
 	var err error
@@ -32,7 +32,7 @@ func (h *Handler) List(c *gin.Context) {
 	if field == "id" {
 		ReturnErrorResponse(c, domain.AppError{
 			Code: domain.ErrSearchByID,
-			Msg:  "Cannot filter by ID. Please use the following endpoint '/:resource/:id'.",
+			Msg:  "Cannot filter by ID. Please use the following endpoint '/:collection/:id'.",
 		})
 		return
 	}
@@ -52,9 +52,9 @@ func (h *Handler) List(c *gin.Context) {
 			Value:    value,
 			Contains: contains,
 		}
-		result, err = h.listFilterSR.Execute(resource, filter)
+		result, err = h.ListFilterSR.Execute(collection, filter)
 	} else {
-		result, err = h.listSR.Execute(resource)
+		result, err = h.ListSR.Execute(collection)
 	}
 
 	if err != nil {
@@ -77,9 +77,9 @@ func (h *Handler) List(c *gin.Context) {
 }
 
 func (h *Handler) Get(c *gin.Context) {
-	resource := c.Param("resource")
+	collection := c.Param("collection")
 	id := c.Param("id")
-	result, err := h.getSR.Execute(resource, id)
+	result, err := h.GetSR.Execute(collection, id)
 	if err != nil {
 		ReturnErrorResponse(c, err)
 		return
@@ -89,7 +89,7 @@ func (h *Handler) Get(c *gin.Context) {
 }
 
 func (h *Handler) Create(c *gin.Context) {
-	resource := c.Param("resource")
+	collection := c.Param("collection")
 	var record domain.Record
 	if err := c.ShouldBindJSON(&record); err != nil {
 		if err.Error() == "EOF" {
@@ -114,20 +114,20 @@ func (h *Handler) Create(c *gin.Context) {
 		return
 	}
 
-	id, err := h.createSR.Execute(resource, record)
+	id, err := h.CreateSR.Execute(collection, record)
 	if err != nil {
 		ReturnErrorResponse(c, err)
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"message":  fmt.Sprintf("Record with ID '%s' added to %s resource", id, resource),
-		"location": fmt.Sprintf("/%s/%s", resource, id),
+		"message":  fmt.Sprintf("Record with ID '%s' added to %s collection", id, collection),
+		"location": fmt.Sprintf("/%s/%s", collection, id),
 	})
 }
 
 func (h *Handler) Update(c *gin.Context) {
-	resource := c.Param("resource")
+	collection := c.Param("collection")
 	id := c.Param("id")
 
 	var record domain.Record
@@ -150,9 +150,9 @@ func (h *Handler) Update(c *gin.Context) {
 	var err error
 
 	if c.Request.Method == "PATCH" {
-		updatedID, err = h.updateFieldSR.Execute(resource, id, record)
+		updatedID, err = h.UpdateFieldSR.Execute(collection, id, record)
 	} else {
-		updatedID, err = h.updateSR.Execute(resource, id, record)
+		updatedID, err = h.UpdateSR.Execute(collection, id, record)
 	}
 
 	if err != nil {
@@ -166,10 +166,10 @@ func (h *Handler) Update(c *gin.Context) {
 }
 
 func (h *Handler) Delete(c *gin.Context) {
-	resource := c.Param("resource")
+	collection := c.Param("collection")
 	id := c.Param("id")
 
-	deletedID, err := h.deleteSR.Execute(resource, id)
+	deletedID, err := h.DeleteSR.Execute(collection, id)
 	if err != nil {
 		ReturnErrorResponse(c, err)
 		return

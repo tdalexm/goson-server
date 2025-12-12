@@ -1,22 +1,18 @@
-package repository
+package jsonloader
 
 import (
 	"encoding/json"
 	"os"
 
 	"github.com/tdalexm/goson-server/internal/domain"
+	ports "github.com/tdalexm/goson-server/internal/ports/driven"
 )
-
-type JsonRepo interface {
-	Load() (map[string][]domain.Record, error)
-	Save(map[string][]domain.Record) error
-}
 
 type Repo struct {
 	path string
 }
 
-func NewJsonRepo(path string) JsonRepo {
+func NewJsonRepo(path string) ports.JsonRepo {
 	return &Repo{path: path}
 }
 

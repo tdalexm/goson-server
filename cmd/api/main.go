@@ -7,7 +7,9 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/tdalexm/goson-server/internal/repository"
+	jsonloader "github.com/tdalexm/goson-server/internal/adapters/driven/json_loader"
+	"github.com/tdalexm/goson-server/internal/adapters/driven/repository"
+	driverhttp "github.com/tdalexm/goson-server/internal/adapters/driver/http"
 	"github.com/tdalexm/goson-server/internal/services"
 )
 
@@ -34,27 +36,27 @@ func main() {
 	}
 
 	router := gin.Default()
-	jsonRepo := repository.NewJsonRepo(*dbPath)
+	jsonRepo := jsonloader.NewJsonRepo(*dbPath)
 
 	data, _ := jsonRepo.Load()
 	stateRepo := repository.NewStateRepository(data)
 
-	handler := &Handler{
-		listSR:        *services.NewListService(stateRepo),
-		listFilterSR:  *services.NewListFilterService(stateRepo),
-		getSR:         *services.NewGetService(stateRepo),
-		createSR:      *services.NewCreateService(stateRepo),
-		updateSR:      *services.NewUpdateService(stateRepo),
-		updateFieldSR: *services.NewUpdateFieldsService(stateRepo),
-		deleteSR:      *services.NewDeleteService(stateRepo),
+	handler := &driverhttp.Handler{
+		ListSR:        *services.NewListService(stateRepo),
+		ListFilterSR:  *services.NewListFilterService(stateRepo),
+		GetSR:         *services.NewGetService(stateRepo),
+		CreateSR:      *services.NewCreateService(stateRepo),
+		UpdateSR:      *services.NewUpdateService(stateRepo),
+		UpdateFieldSR: *services.NewUpdateFieldsService(stateRepo),
+		DeleteSR:      *services.NewDeleteService(stateRepo),
 	}
 
-	router.GET("/:resource", handler.List)
-	router.GET("/:resource/:id", handler.Get)
-	router.POST("/:resource", handler.Create)
-	router.POST("/:resource/:id", handler.Update)
-	router.PATCH("/:resource/:id", handler.Update)
-	router.DELETE("/:resource/:id", handler.Delete)
+	router.GET("/:collection", handler.List)
+	router.GET("/:collection/:id", handler.Get)
+	router.POST("/:collection", handler.Create)
+	router.POST("/:collection/:id", handler.Update)
+	router.PATCH("/:collection/:id", handler.Update)
+	router.DELETE("/:collection/:id", handler.Delete)
 
 	log.Fatalln(router.Run(":" + *port))
 }
