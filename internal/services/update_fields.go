@@ -13,6 +13,6 @@ func NewUpdateFieldsService(repo portsdriven.Repository) *UpdateFieldsService {
 	return &UpdateFieldsService{repo}
 }
 
-func (sr *UpdateFieldsService) Execute(collection, id string, record domain.Record) (string, error) {
-	return sr.repo.UpdateFields(collection, id, record)
+func (sr *UpdateFieldsService) Execute(collectionType, id string, record domain.Record) (domain.Record, error) {
+	return sr.repo.UpdateFields(collectionType, id, record)
 }

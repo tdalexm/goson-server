@@ -13,6 +13,6 @@ func NewUpdateService(repo portsdriven.Repository) *UpdateService {
 	return &UpdateService{repo}
 }
 
-func (s *UpdateService) Execute(collection, id string, record domain.Record) (string, error) {
-	return s.repo.Update(collection, id, record)
+func (s *UpdateService) Execute(collectionType, id string, record domain.Record) (domain.Record, error) {
+	return s.repo.Update(collectionType, id, record)
 }

@@ -1,5 +1,5 @@
 package portsdriver
 
 type DeleteService interface {
-	Execute(record, id string) (string, error)
+	Execute(collectionType, id string) (string, error)
 }

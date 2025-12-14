@@ -13,6 +13,6 @@ func NewListService(repo portsdriven.Repository) *ListService {
 	return &ListService{repo: repo}
 }
 
-func (s *ListService) Execute(collection string) ([]domain.Record, error) {
-	return s.repo.List(collection)
+func (s *ListService) Execute(collectionType string) ([]domain.Record, error) {
+	return s.repo.List(collectionType)
 }

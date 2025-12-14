@@ -16,24 +16,24 @@ func NewStateRepository(data map[string][]domain.Record) portsdriven.Repository 
 	return &StateRepository{data: data}
 }
 
-func (sr *StateRepository) List(collection string) ([]domain.Record, error) {
-	res, exists := sr.data[collection]
+func (sr *StateRepository) List(collectionType string) ([]domain.Record, error) {
+	res, exists := sr.data[collectionType]
 	if !exists {
 		return nil, domain.NewAppError(
 			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collection),
+			fmt.Sprintf("collection '%s' not found in json", collectionType),
 		)
 	}
 
 	return res, nil
 }
 
-func (sr *StateRepository) ListWithFilter(collection string, filter domain.Filter) ([]domain.Record, error) {
-	res, exists := sr.data[collection]
+func (sr *StateRepository) ListWithFilter(collectionType string, filter domain.Filter) ([]domain.Record, error) {
+	res, exists := sr.data[collectionType]
 	if !exists {
 		return nil, domain.NewAppError(
 			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collection),
+			fmt.Sprintf("collection '%s' not found in json", collectionType),
 		)
 	}
 
@@ -57,12 +57,12 @@ func (sr *StateRepository) ListWithFilter(collection string, filter domain.Filte
 	return records, nil
 }
 
-func (sr *StateRepository) GetByID(collection, id string) (domain.Record, error) {
-	res, exists := sr.data[collection]
+func (sr *StateRepository) GetByID(collectionType, id string) (domain.Record, error) {
+	res, exists := sr.data[collectionType]
 	if !exists {
 		return nil, domain.NewAppError(
 			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collection),
+			fmt.Sprintf("collection '%s' not found in json", collectionType),
 		)
 	}
 
@@ -73,17 +73,17 @@ func (sr *StateRepository) GetByID(collection, id string) (domain.Record, error)
 	}
 	return nil, domain.NewAppError(
 		domain.ErrCodeNotFound,
-		fmt.Sprintf("%s with id '%s' not found", collection, id),
+		fmt.Sprintf("%s with id '%s' not found", collectionType, id),
 	)
 }
 
-func (sr *StateRepository) Create(collection string, record domain.Record) (string, error) {
+func (sr *StateRepository) Create(collectionType string, record domain.Record) (domain.Record, error) {
 	var res []domain.Record
 	var exists bool
-	if res, exists = sr.data[collection]; !exists {
-		return "", domain.NewAppError(
+	if res, exists = sr.data[collectionType]; !exists {
+		return nil, domain.NewAppError(
 			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collection),
+			fmt.Sprintf("collection '%s' not found in json", collectionType),
 		)
 	}
 
@@ -94,7 +94,7 @@ func (sr *StateRepository) Create(collection string, record domain.Record) (stri
 
 	id, isStr := record["id"].(string)
 	if !isStr {
-		return "", domain.NewAppError(
+		return nil, domain.NewAppError(
 			domain.ErrValidation,
 			"ID must be a string. Ex: 'id':'25' ",
 		)
@@ -103,29 +103,29 @@ func (sr *StateRepository) Create(collection string, record domain.Record) (stri
 	for _, element := range res {
 		elementID, ok := element["id"].(string)
 		if ok && elementID == id {
-			return "", domain.NewAppError(
+			return nil, domain.NewAppError(
 				domain.ErrValidation,
 				fmt.Sprintf("ID '%s' is duplicated. ID must be unique.", id),
 			)
 		}
 	}
 
-	sr.data[collection] = append(sr.data[collection], record)
+	sr.data[collectionType] = append(sr.data[collectionType], record)
 
-	return id, nil
+	return record, nil
 }
 
-func (sr *StateRepository) Update(collection, id string, record domain.Record) (string, error) {
-	res, exists := sr.data[collection]
+func (sr *StateRepository) Update(collectionType, id string, record domain.Record) (domain.Record, error) {
+	res, exists := sr.data[collectionType]
 	if !exists {
-		return "", domain.NewAppError(
+		return nil, domain.NewAppError(
 			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collection),
+			fmt.Sprintf("collection '%s' not found in json", collectionType),
 		)
 	}
 
 	if _, hasID := record["id"]; hasID {
-		return "", domain.NewAppError(
+		return nil, domain.NewAppError(
 			domain.ErrValidation,
 			"Cannot update the ID field",
 		)
@@ -135,28 +135,28 @@ func (sr *StateRepository) Update(collection, id string, record domain.Record) (
 		elementID, ok := element["id"].(string)
 		if ok && elementID == id {
 			record["id"] = id
-			sr.data[collection][i] = record
-			return id, nil
+			sr.data[collectionType][i] = record
+			return record, nil
 		}
 	}
 
-	return "", domain.NewAppError(
+	return nil, domain.NewAppError(
 		domain.ErrCodeNotFound,
-		fmt.Sprintf("%s with ID '%s' not found", collection, id),
+		fmt.Sprintf("%s with ID '%s' not found", collectionType, id),
 	)
 }
 
-func (sr *StateRepository) UpdateFields(collection, id string, record domain.Record) (string, error) {
-	res, exists := sr.data[collection]
+func (sr *StateRepository) UpdateFields(collectionType, id string, record domain.Record) (domain.Record, error) {
+	res, exists := sr.data[collectionType]
 	if !exists {
-		return "", domain.NewAppError(
+		return nil, domain.NewAppError(
 			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collection),
+			fmt.Sprintf("collection '%s' not found in json", collectionType),
 		)
 	}
 
 	if _, hasID := record["id"]; hasID {
-		return "", domain.NewAppError(
+		return nil, domain.NewAppError(
 			domain.ErrValidation,
 			"Cannot update the ID field",
 		)
@@ -172,9 +172,9 @@ func (sr *StateRepository) UpdateFields(collection, id string, record domain.Rec
 	}
 
 	if foundIndex == -1 {
-		return "", domain.NewAppError(
+		return nil, domain.NewAppError(
 			domain.ErrCodeNotFound,
-			fmt.Sprintf("%s with ID '%s' not found", collection, id),
+			fmt.Sprintf("%s with ID '%s' not found", collectionType, id),
 		)
 	}
 
@@ -185,17 +185,17 @@ func (sr *StateRepository) UpdateFields(collection, id string, record domain.Rec
 		}
 	}
 
-	sr.data[collection][foundIndex] = current
+	sr.data[collectionType][foundIndex] = current
 
-	return id, nil
+	return current, nil
 }
 
-func (sr *StateRepository) Delete(collection, id string) (string, error) {
-	res, exists := sr.data[collection]
+func (sr *StateRepository) Delete(collectionType, id string) (string, error) {
+	res, exists := sr.data[collectionType]
 	if !exists {
 		return "", domain.NewAppError(
 			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collection),
+			fmt.Sprintf("collection '%s' not found in json", collectionType),
 		)
 	}
 	foundIndex := -1
@@ -208,10 +208,10 @@ func (sr *StateRepository) Delete(collection, id string) (string, error) {
 	if foundIndex == -1 {
 		return "", domain.NewAppError(
 			domain.ErrCodeNotFound,
-			fmt.Sprintf("%s with ID '%s' not found", collection, id),
+			fmt.Sprintf("%s with ID '%s' not found", collectionType, id),
 		)
 	}
-	sr.data[collection] = append(res[:foundIndex], res[foundIndex+1:]...)
+	sr.data[collectionType] = append(res[:foundIndex], res[foundIndex+1:]...)
 	return id, nil
 }
 

@@ -13,6 +13,6 @@ func NewCreateService(repo portsdriven.Repository) *CreateService {
 	return &CreateService{repo}
 }
 
-func (cr *CreateService) Execute(collection string, record domain.Record) (string, error) {
-	return cr.repo.Create(collection, record)
+func (cr *CreateService) Execute(collectionType string, record domain.Record) (domain.Record, error) {
+	return cr.repo.Create(collectionType, record)
 }

@@ -13,6 +13,6 @@ func NewGetService(repo portsdriven.Repository) *GetService {
 	return &GetService{repo: repo}
 }
 
-func (s *GetService) Execute(collection, id string) (domain.Record, error) {
-	return s.repo.GetByID(collection, id)
+func (s *GetService) Execute(collectionType, id string) (domain.Record, error) {
+	return s.repo.GetByID(collectionType, id)
 }

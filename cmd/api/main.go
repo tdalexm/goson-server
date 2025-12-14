@@ -22,6 +22,8 @@ func main() {
 	help := flag.Bool("help", false, "Show help")
 	flag.Parse()
 
+	baseUrl := fmt.Sprintf("http://localhost:%s", *port)
+
 	if *help {
 		fmt.Println("goson-server - A JSON server implementation in Go")
 		fmt.Println("\nUsage:")
@@ -29,11 +31,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Printf("Starting server with db: %s on port: %s", *dbPath, *port)
-
 	if _, err := os.Stat(*dbPath); os.IsNotExist(err) {
 		log.Fatalf("Database file not found: %s", *dbPath)
 	}
+
+	log.Printf("Starting server with db: %s on port: %s", *dbPath, *port)
 
 	router := gin.Default()
 	jsonRepo := jsonloader.NewJsonRepo(*dbPath)
@@ -41,15 +43,16 @@ func main() {
 	data, _ := jsonRepo.Load()
 	stateRepo := repository.NewStateRepository(data)
 
-	handler := &driverhttp.Handler{
-		ListSR:        *services.NewListService(stateRepo),
-		ListFilterSR:  *services.NewListFilterService(stateRepo),
-		GetSR:         *services.NewGetService(stateRepo),
-		CreateSR:      *services.NewCreateService(stateRepo),
-		UpdateSR:      *services.NewUpdateService(stateRepo),
-		UpdateFieldSR: *services.NewUpdateFieldsService(stateRepo),
-		DeleteSR:      *services.NewDeleteService(stateRepo),
-	}
+	handler := driverhttp.NewHandler(
+		services.NewListService(stateRepo),
+		services.NewListFilterService(stateRepo),
+		services.NewGetService(stateRepo),
+		services.NewCreateService(stateRepo),
+		services.NewUpdateService(stateRepo),
+		services.NewUpdateFieldsService(stateRepo),
+		services.NewDeleteService(stateRepo),
+		baseUrl,
+	)
 
 	router.GET("/:collection", handler.List)
 	router.GET("/:collection/:id", handler.Get)

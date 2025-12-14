@@ -10,6 +10,6 @@ func NewDeleteService(repo portsdriven.Repository) *DeleteService {
 	return &DeleteService{repo}
 }
 
-func (cr *DeleteService) Execute(collection, id string) (string, error) {
-	return cr.repo.Delete(collection, id)
+func (cr *DeleteService) Execute(collectionType, id string) (string, error) {
+	return cr.repo.Delete(collectionType, id)
 }

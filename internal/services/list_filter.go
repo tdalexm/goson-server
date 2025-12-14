@@ -13,6 +13,6 @@ func NewListFilterService(repo portsdriven.Repository) *ListFilterService {
 	return &ListFilterService{repo: repo}
 }
 
-func (s *ListFilterService) Execute(collection string, filter domain.Filter) ([]domain.Record, error) {
-	return s.repo.ListWithFilter(collection, filter)
+func (s *ListFilterService) Execute(collectionType string, filter domain.Filter) ([]domain.Record, error) {
+	return s.repo.ListWithFilter(collectionType, filter)
 }
