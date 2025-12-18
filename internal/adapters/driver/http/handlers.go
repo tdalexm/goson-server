@@ -3,6 +3,7 @@ package driverhttp
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -46,38 +47,26 @@ func NewHandler(
 	}
 }
 
+var reservedParams = []string{"page", "limit"}
+
 func (h *Handler) List(c *gin.Context) {
 	collection := c.Param("collection")
 
 	var result []domain.Record
 	var err error
 
-	field := c.Query("field")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	queryParams := c.Request.URL.Query()
 
-	if field == "id" {
-		ReturnErrorResponse(c, domain.AppError{
-			Code: domain.ErrSearchByID,
-			Msg:  "Cannot filter by ID. Please use the following endpoint '/:collection/:id'.",
-		})
+	filters, err := extractFiltersFromQuery(queryParams)
+	if err != nil {
+		ReturnErrorResponse(c, err)
 		return
 	}
 
-	if field != "" {
-		value := c.Query("value")
-		contains := c.Query("contains")
-		if value == "" && contains == "" {
-			ReturnErrorResponse(c, domain.AppError{
-				Code: domain.ErrWrongParams,
-				Msg:  "value or contains must be specified when filtering by field.",
-			})
-			return
-		}
-		filter := domain.Filter{
-			Field:    field,
-			Value:    value,
-			Contains: contains,
-		}
-		result, err = h.listFilterSR.Execute(collection, filter)
+	if len(filters) != 0 {
+		result, err = h.listFilterSR.Execute(collection, filters)
 	} else {
 		result, err = h.listSR.Execute(collection)
 	}
@@ -92,9 +81,6 @@ func (h *Handler) List(c *gin.Context) {
 		c.JSON(http.StatusNoContent, result)
 	}
 
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	queryParams := c.Request.URL.Query()
 	sort := strings.ToLower(c.Query("sort"))
 	if sort == "desc" {
 		slices.Reverse(result)
@@ -102,7 +88,10 @@ func (h *Handler) List(c *gin.Context) {
 
 	start := (page - 1) * limit
 	end := start + limit
-	paginatedData := result[start:end]
+	paginatedData := result
+	if len(result) >= limit {
+		paginatedData = result[start:end]
+	}
 	responseData := h.serializer.SerializeCollection(collection, paginatedData, total, page, limit, queryParams)
 
 	c.PureJSON(200, responseData)
@@ -210,4 +199,39 @@ func (h *Handler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Deleted record with ID '%s'", deletedID),
 	})
+}
+
+func extractFiltersFromQuery(query url.Values) ([]domain.Filter, error) {
+	var filters []domain.Filter
+	if len(query) == 0 {
+		return filters, nil
+	}
+
+	for key, values := range query {
+		if key == "id" {
+			return nil, domain.NewAppError(
+				domain.ErrSearchByID,
+				"Cannot filter by ID. Please use the following endpoint '/:collection/:id'.",
+			)
+		}
+		if slices.Contains(reservedParams, key) || len(values) == 0 {
+			continue
+		}
+
+		value := values[0]
+		filterType := "equals"
+		field := key
+		if strings.HasSuffix(key, "_cs") {
+			filterType = "contains"
+			field = strings.TrimSuffix(key, "_cs")
+		}
+
+		filters = append(filters, domain.Filter{
+			Field: field,
+			Value: value,
+			Type:  filterType,
+		})
+	}
+
+	return filters, nil
 }

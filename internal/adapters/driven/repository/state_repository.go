@@ -28,7 +28,7 @@ func (sr *StateRepository) List(collectionType string) ([]domain.Record, error) 
 	return res, nil
 }
 
-func (sr *StateRepository) ListWithFilter(collectionType string, filter domain.Filter) ([]domain.Record, error) {
+func (sr *StateRepository) ListWithFilter(collectionType string, filters []domain.Filter) ([]domain.Record, error) {
 	res, exists := sr.data[collectionType]
 	if !exists {
 		return nil, domain.NewAppError(
@@ -39,17 +39,8 @@ func (sr *StateRepository) ListWithFilter(collectionType string, filter domain.F
 
 	var records []domain.Record
 	for _, element := range res {
-		fieldValue, exist := element[filter.Field]
-		if !exist {
-			continue
-		}
-
-		match, err := filter.Matches(fieldValue)
-		if err != nil {
-			return nil, err
-		}
-
-		if match {
+		matches := matchesAllFilters(element, filters)
+		if matches {
 			records = append(records, element)
 		}
 	}
@@ -235,4 +226,20 @@ func (sr *StateRepository) generateNextID(collection []domain.Record) string {
 
 	nextID := maxID + 1
 	return strconv.Itoa(nextID)
+}
+
+func matchesAllFilters(record domain.Record, filters []domain.Filter) bool {
+	for _, filter := range filters {
+		fieldValue, exists := record[filter.Field]
+		if !exists {
+			return false
+		}
+
+		matches := filter.Matches(fieldValue)
+		if !matches {
+			return false
+		}
+	}
+
+	return true
 }

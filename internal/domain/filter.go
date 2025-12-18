@@ -6,23 +6,21 @@ import (
 )
 
 type Filter struct {
-	Field    string
-	Value    string
-	Contains string
+	Field string
+	Value string
+	Type  string
 }
 
-func (f Filter) Matches(value any) (bool, error) {
-	if f.Contains != "" {
-		s, ok := value.(string)
-		if !ok {
-			return false, NewAppError(
-				ErrFieldNotString,
-				fmt.Sprintf("%s field value is not a string.", f.Field),
-			)
+func (f Filter) Matches(value any) bool {
+	if f.Type == "contains" {
+		if s, ok := value.(string); ok {
+			return strings.Contains(strings.ToLower(s), strings.ToLower(f.Value))
 		}
-
-		return strings.Contains(strings.ToLower(s), strings.ToLower(f.Contains)), nil
 	}
 
-	return fmt.Sprintf("%v", value) == fmt.Sprintf("%v", f.Value), nil
+	if s, ok := value.(string); ok {
+		return strings.Contains(strings.ToLower(s), strings.ToLower(f.Value))
+	}
+
+	return fmt.Sprintf("%v", value) == fmt.Sprintf("%v", f.Value)
 }
