@@ -78,7 +78,8 @@ func (h *Handler) List(c *gin.Context) {
 
 	total := len(result)
 	if total == 0 {
-		c.JSON(http.StatusNoContent, result)
+		c.AbortWithStatus(http.StatusNoContent)
+		return
 	}
 
 	sort := strings.ToLower(c.Query("sort"))
