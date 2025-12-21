@@ -39,7 +39,10 @@ func (sr *StateRepository) ListWithFilter(collectionType string, filters []domai
 
 	var records []domain.Record
 	for _, element := range res {
-		matches := matchesAllFilters(element, filters)
+		matches, err := matchesAllFilters(element, filters)
+		if err != nil {
+			return nil, err
+		}
 		if matches {
 			records = append(records, element)
 		}
@@ -228,18 +231,22 @@ func (sr *StateRepository) generateNextID(collection []domain.Record) string {
 	return strconv.Itoa(nextID)
 }
 
-func matchesAllFilters(record domain.Record, filters []domain.Filter) bool {
+func matchesAllFilters(record domain.Record, filters []domain.Filter) (bool, error) {
 	for _, filter := range filters {
 		fieldValue, exists := record[filter.Field]
 		if !exists {
-			return false
+			return false, nil
 		}
 
-		matches := filter.Matches(fieldValue)
+		// pass always a string for less complex validation in filter func
+		matches, err := filter.Matches(fmt.Sprintf("%v", fieldValue))
+		if err != nil {
+			return false, err
+		}
 		if !matches {
-			return false
+			return false, nil
 		}
 	}
 
-	return true
+	return true, nil
 }

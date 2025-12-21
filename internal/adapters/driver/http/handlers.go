@@ -220,11 +220,28 @@ func extractFiltersFromQuery(query url.Values) ([]domain.Filter, error) {
 		}
 
 		value := values[0]
-		filterType := "equals"
+		filterType := domain.FilterEquals
 		field := key
-		if strings.HasSuffix(key, "_cs") {
-			filterType = "contains"
+
+		switch {
+		case strings.HasSuffix(key, "_cs"):
+			filterType = domain.FilterContains
 			field = strings.TrimSuffix(key, "_cs")
+		case strings.HasSuffix(key, "_lt"):
+			filterType = domain.FilterLT
+			field = strings.TrimSuffix(key, "_lt")
+		case strings.HasSuffix(key, "_lte"):
+			filterType = domain.FilterLTE
+			field = strings.TrimSuffix(key, "_lte")
+		case strings.HasSuffix(key, "_gt"):
+			filterType = domain.FilterGT
+			field = strings.TrimSuffix(key, "_gt")
+		case strings.HasSuffix(key, "_gte"):
+			filterType = domain.FilterGTE
+			field = strings.TrimSuffix(key, "_gte")
+		case strings.HasSuffix(key, "_ne"):
+			filterType = domain.FilterNE
+			field = strings.TrimSuffix(key, "_ne")
 		}
 
 		filters = append(filters, domain.Filter{
