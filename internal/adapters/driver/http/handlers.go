@@ -47,6 +47,11 @@ func NewHandler(
 	}
 }
 
+const (
+	DefaultPage  = 1
+	DefaultLimit = 10
+)
+
 var reservedParams = []string{"page", "limit"}
 
 func (h *Handler) List(c *gin.Context) {
@@ -55,8 +60,8 @@ func (h *Handler) List(c *gin.Context) {
 	var result []domain.Record
 	var err error
 
-	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
-	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	page := parsePaginationParam("page", DefaultPage, c)
+	limit := parsePaginationParam("limit", DefaultLimit, c)
 	queryParams := c.Request.URL.Query()
 
 	filters, err := extractFiltersFromQuery(queryParams)
@@ -88,11 +93,12 @@ func (h *Handler) List(c *gin.Context) {
 	}
 
 	start := (page - 1) * limit
+	start = min(start, total)
+
 	end := start + limit
-	paginatedData := result
-	if len(result) >= limit {
-		paginatedData = result[start:end]
-	}
+	end = min(end, total)
+
+	paginatedData := result[start:end]
 	responseData := h.serializer.SerializeCollection(collection, paginatedData, total, page, limit, queryParams)
 
 	c.PureJSON(200, responseData)
@@ -113,27 +119,10 @@ func (h *Handler) Get(c *gin.Context) {
 
 func (h *Handler) Create(c *gin.Context) {
 	collectionType := c.Param("collection")
-	var record domain.Record
-	if err := c.ShouldBindJSON(&record); err != nil {
-		if err.Error() == "EOF" {
-			ReturnErrorResponse(c, domain.NewAppError(
-				domain.ErrValidation,
-				"Request body cannot be empty",
-			))
-			return
-		}
-		ReturnErrorResponse(c, domain.NewAppError(
-			domain.ErrValidation,
-			fmt.Sprintf("Invalid JSON format: %v", err),
-		))
-		return
-	}
 
-	if len(record) == 0 {
-		ReturnErrorResponse(c, domain.NewAppError(
-			domain.ErrValidation,
-			"Request body cannot be empty",
-		))
+	record, err := bindJSONRecord(c)
+	if err != nil {
+		ReturnErrorResponse(c, err)
 		return
 	}
 
@@ -152,25 +141,13 @@ func (h *Handler) Update(c *gin.Context) {
 	collectionType := c.Param("collection")
 	id := c.Param("id")
 
-	var record domain.Record
-	if err := c.ShouldBindJSON(&record); err != nil {
-		if err.Error() == "EOF" {
-			ReturnErrorResponse(c, domain.NewAppError(
-				domain.ErrValidation,
-				"Request body cannot be empty",
-			))
-			return
-		}
-		ReturnErrorResponse(c, domain.NewAppError(
-			domain.ErrValidation,
-			fmt.Sprintf("Invalid JSON format: %v", err),
-		))
+	record, err := bindJSONRecord(c)
+	if err != nil {
+		ReturnErrorResponse(c, err)
 		return
 	}
 
 	var result domain.Record
-	var err error
-
 	if c.Request.Method == "PATCH" {
 		result, err = h.updateFieldsSR.Execute(collectionType, id, record)
 	} else {
@@ -200,6 +177,44 @@ func (h *Handler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Deleted record with ID '%s'", deletedID),
 	})
+}
+
+func parsePaginationParam(param string, defaultValue int, c *gin.Context) int {
+	s := c.DefaultQuery(param, strconv.Itoa(defaultValue))
+	return parsePositiveInt(s, defaultValue)
+}
+
+func parsePositiveInt(s string, def int) int {
+	i, err := strconv.Atoi(s)
+	if err != nil || i < 1 {
+		return def
+	}
+	return i
+}
+
+func bindJSONRecord(c *gin.Context) (domain.Record, error) {
+	var record domain.Record
+	if err := c.ShouldBindJSON(&record); err != nil {
+		if err.Error() == "EOF" {
+			return nil, domain.NewAppError(
+				domain.ErrValidation,
+				"Request body cannot be empty",
+			)
+		}
+		return nil, domain.NewAppError(
+			domain.ErrValidation,
+			fmt.Sprintf("Invalid JSON format: %v", err),
+		)
+	}
+
+	if len(record) == 0 {
+		return nil, domain.NewAppError(
+			domain.ErrValidation,
+			"Request body cannot be empty",
+		)
+	}
+
+	return record, nil
 }
 
 func extractFiltersFromQuery(query url.Values) ([]domain.Filter, error) {

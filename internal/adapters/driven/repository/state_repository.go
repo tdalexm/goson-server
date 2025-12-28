@@ -16,7 +16,7 @@ func NewStateRepository(data map[string][]domain.Record) portsdriven.Repository 
 	return &StateRepository{data: data}
 }
 
-func (sr *StateRepository) List(collectionType string) ([]domain.Record, error) {
+func (sr *StateRepository) getCollection(collectionType string) ([]domain.Record, error) {
 	res, exists := sr.data[collectionType]
 	if !exists {
 		return nil, domain.NewAppError(
@@ -28,13 +28,14 @@ func (sr *StateRepository) List(collectionType string) ([]domain.Record, error) 
 	return res, nil
 }
 
+func (sr *StateRepository) List(collectionType string) ([]domain.Record, error) {
+	return sr.getCollection(collectionType)
+}
+
 func (sr *StateRepository) ListWithFilter(collectionType string, filters []domain.Filter) ([]domain.Record, error) {
-	res, exists := sr.data[collectionType]
-	if !exists {
-		return nil, domain.NewAppError(
-			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collectionType),
-		)
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return nil, err
 	}
 
 	var records []domain.Record
@@ -52,12 +53,9 @@ func (sr *StateRepository) ListWithFilter(collectionType string, filters []domai
 }
 
 func (sr *StateRepository) GetByID(collectionType, id string) (domain.Record, error) {
-	res, exists := sr.data[collectionType]
-	if !exists {
-		return nil, domain.NewAppError(
-			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collectionType),
-		)
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return nil, err
 	}
 
 	for _, element := range res {
@@ -72,13 +70,9 @@ func (sr *StateRepository) GetByID(collectionType, id string) (domain.Record, er
 }
 
 func (sr *StateRepository) Create(collectionType string, record domain.Record) (domain.Record, error) {
-	var res []domain.Record
-	var exists bool
-	if res, exists = sr.data[collectionType]; !exists {
-		return nil, domain.NewAppError(
-			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collectionType),
-		)
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return nil, err
 	}
 
 	if _, hasID := record["id"]; !hasID {
@@ -110,12 +104,9 @@ func (sr *StateRepository) Create(collectionType string, record domain.Record) (
 }
 
 func (sr *StateRepository) Update(collectionType, id string, record domain.Record) (domain.Record, error) {
-	res, exists := sr.data[collectionType]
-	if !exists {
-		return nil, domain.NewAppError(
-			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collectionType),
-		)
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return nil, err
 	}
 
 	if _, hasID := record["id"]; hasID {
@@ -141,12 +132,9 @@ func (sr *StateRepository) Update(collectionType, id string, record domain.Recor
 }
 
 func (sr *StateRepository) UpdateFields(collectionType, id string, record domain.Record) (domain.Record, error) {
-	res, exists := sr.data[collectionType]
-	if !exists {
-		return nil, domain.NewAppError(
-			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collectionType),
-		)
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return nil, err
 	}
 
 	if _, hasID := record["id"]; hasID {
@@ -185,13 +173,11 @@ func (sr *StateRepository) UpdateFields(collectionType, id string, record domain
 }
 
 func (sr *StateRepository) Delete(collectionType, id string) (string, error) {
-	res, exists := sr.data[collectionType]
-	if !exists {
-		return "", domain.NewAppError(
-			domain.ErrCodeNotFound,
-			fmt.Sprintf("collection '%s' not found in json", collectionType),
-		)
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return "", err
 	}
+
 	foundIndex := -1
 	for i, element := range res {
 		if element["id"] == id {
@@ -210,10 +196,6 @@ func (sr *StateRepository) Delete(collectionType, id string) (string, error) {
 }
 
 func (sr *StateRepository) generateNextID(collection []domain.Record) string {
-	if len(collection) == 0 {
-		return "1"
-	}
-
 	maxID := 0
 	for _, record := range collection {
 		if id, ok := record["id"].(int); ok {
@@ -227,8 +209,7 @@ func (sr *StateRepository) generateNextID(collection []domain.Record) string {
 		}
 	}
 
-	nextID := maxID + 1
-	return strconv.Itoa(nextID)
+	return strconv.Itoa(maxID + 1)
 }
 
 func matchesAllFilters(record domain.Record, filters []domain.Filter) (bool, error) {
