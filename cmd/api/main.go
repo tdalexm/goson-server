@@ -7,7 +7,9 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/tdalexm/goson-server/internal/repository"
+	jsonloader "github.com/tdalexm/goson-server/internal/adapters/driven/json_loader"
+	"github.com/tdalexm/goson-server/internal/adapters/driven/repository"
+	driverhttp "github.com/tdalexm/goson-server/internal/adapters/driver/http"
 	"github.com/tdalexm/goson-server/internal/services"
 )
 
@@ -20,6 +22,8 @@ func main() {
 	help := flag.Bool("help", false, "Show help")
 	flag.Parse()
 
+	baseUrl := fmt.Sprintf("http://localhost:%s", *port)
+
 	if *help {
 		fmt.Println("goson-server - A JSON server implementation in Go")
 		fmt.Println("\nUsage:")
@@ -27,34 +31,35 @@ func main() {
 		os.Exit(0)
 	}
 
-	log.Printf("Starting server with db: %s on port: %s", *dbPath, *port)
-
 	if _, err := os.Stat(*dbPath); os.IsNotExist(err) {
 		log.Fatalf("Database file not found: %s", *dbPath)
 	}
 
+	log.Printf("Starting server with db: %s on port: %s", *dbPath, *port)
+
 	router := gin.Default()
-	jsonRepo := repository.NewJsonRepo(*dbPath)
+	jsonRepo := jsonloader.NewJsonRepo(*dbPath)
 
 	data, _ := jsonRepo.Load()
 	stateRepo := repository.NewStateRepository(data)
 
-	handler := &Handler{
-		listSR:        *services.NewListService(stateRepo),
-		listFilterSR:  *services.NewListFilterService(stateRepo),
-		getSR:         *services.NewGetService(stateRepo),
-		createSR:      *services.NewCreateService(stateRepo),
-		updateSR:      *services.NewUpdateService(stateRepo),
-		updateFieldSR: *services.NewUpdateFieldsService(stateRepo),
-		deleteSR:      *services.NewDeleteService(stateRepo),
-	}
+	handler := driverhttp.NewHandler(
+		services.NewListService(stateRepo),
+		services.NewListFilterService(stateRepo),
+		services.NewGetService(stateRepo),
+		services.NewCreateService(stateRepo),
+		services.NewUpdateService(stateRepo),
+		services.NewUpdateFieldsService(stateRepo),
+		services.NewDeleteService(stateRepo),
+		baseUrl,
+	)
 
-	router.GET("/:resource", handler.List)
-	router.GET("/:resource/:id", handler.Get)
-	router.POST("/:resource", handler.Create)
-	router.POST("/:resource/:id", handler.Update)
-	router.PATCH("/:resource/:id", handler.Update)
-	router.DELETE("/:resource/:id", handler.Delete)
+	router.GET("/:collection", handler.List)
+	router.GET("/:collection/:id", handler.Get)
+	router.POST("/:collection", handler.Create)
+	router.POST("/:collection/:id", handler.Update)
+	router.PATCH("/:collection/:id", handler.Update)
+	router.DELETE("/:collection/:id", handler.Delete)
 
 	log.Fatalln(router.Run(":" + *port))
 }

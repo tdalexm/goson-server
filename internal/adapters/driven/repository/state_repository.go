@@ -1,0 +1,233 @@
+package repository
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/tdalexm/goson-server/internal/domain"
+	portsdriven "github.com/tdalexm/goson-server/internal/ports/driven"
+)
+
+type StateRepository struct {
+	data map[string][]domain.Record
+}
+
+func NewStateRepository(data map[string][]domain.Record) portsdriven.Repository {
+	return &StateRepository{data: data}
+}
+
+func (sr *StateRepository) getCollection(collectionType string) ([]domain.Record, error) {
+	res, exists := sr.data[collectionType]
+	if !exists {
+		return nil, domain.NewAppError(
+			domain.ErrCodeNotFound,
+			fmt.Sprintf("collection '%s' not found in json", collectionType),
+		)
+	}
+
+	return res, nil
+}
+
+func (sr *StateRepository) List(collectionType string) ([]domain.Record, error) {
+	return sr.getCollection(collectionType)
+}
+
+func (sr *StateRepository) ListWithFilter(collectionType string, filters []domain.Filter) ([]domain.Record, error) {
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return nil, err
+	}
+
+	var records []domain.Record
+	for _, element := range res {
+		matches, err := matchesAllFilters(element, filters)
+		if err != nil {
+			return nil, err
+		}
+		if matches {
+			records = append(records, element)
+		}
+	}
+
+	return records, nil
+}
+
+func (sr *StateRepository) GetByID(collectionType, id string) (domain.Record, error) {
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, element := range res {
+		if element["id"] == id {
+			return element, nil
+		}
+	}
+	return nil, domain.NewAppError(
+		domain.ErrCodeNotFound,
+		fmt.Sprintf("%s with id '%s' not found", collectionType, id),
+	)
+}
+
+func (sr *StateRepository) Create(collectionType string, record domain.Record) (domain.Record, error) {
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, hasID := record["id"]; !hasID {
+		newID := sr.generateNextID(res)
+		record["id"] = newID
+	}
+
+	id, isStr := record["id"].(string)
+	if !isStr {
+		return nil, domain.NewAppError(
+			domain.ErrValidation,
+			"ID must be a string. Ex: 'id':'25' ",
+		)
+	}
+
+	for _, element := range res {
+		elementID, ok := element["id"].(string)
+		if ok && elementID == id {
+			return nil, domain.NewAppError(
+				domain.ErrValidation,
+				fmt.Sprintf("ID '%s' is duplicated. ID must be unique.", id),
+			)
+		}
+	}
+
+	sr.data[collectionType] = append(sr.data[collectionType], record)
+
+	return record, nil
+}
+
+func (sr *StateRepository) Update(collectionType, id string, record domain.Record) (domain.Record, error) {
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, hasID := record["id"]; hasID {
+		return nil, domain.NewAppError(
+			domain.ErrValidation,
+			"Cannot update the ID field",
+		)
+	}
+
+	for i, element := range res {
+		elementID, ok := element["id"].(string)
+		if ok && elementID == id {
+			record["id"] = id
+			sr.data[collectionType][i] = record
+			return record, nil
+		}
+	}
+
+	return nil, domain.NewAppError(
+		domain.ErrCodeNotFound,
+		fmt.Sprintf("%s with ID '%s' not found", collectionType, id),
+	)
+}
+
+func (sr *StateRepository) UpdateFields(collectionType, id string, record domain.Record) (domain.Record, error) {
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, hasID := record["id"]; hasID {
+		return nil, domain.NewAppError(
+			domain.ErrValidation,
+			"Cannot update the ID field",
+		)
+	}
+
+	foundIndex := -1
+	for i, element := range res {
+		elementID, ok := element["id"].(string)
+		if ok && elementID == id {
+			foundIndex = i
+			break
+		}
+	}
+
+	if foundIndex == -1 {
+		return nil, domain.NewAppError(
+			domain.ErrCodeNotFound,
+			fmt.Sprintf("%s with ID '%s' not found", collectionType, id),
+		)
+	}
+
+	current := res[foundIndex]
+	for key, value := range record {
+		if key != "id" {
+			current[key] = value
+		}
+	}
+
+	sr.data[collectionType][foundIndex] = current
+
+	return current, nil
+}
+
+func (sr *StateRepository) Delete(collectionType, id string) (string, error) {
+	res, err := sr.getCollection(collectionType)
+	if err != nil {
+		return "", err
+	}
+
+	foundIndex := -1
+	for i, element := range res {
+		if element["id"] == id {
+			foundIndex = i
+			break
+		}
+	}
+	if foundIndex == -1 {
+		return "", domain.NewAppError(
+			domain.ErrCodeNotFound,
+			fmt.Sprintf("%s with ID '%s' not found", collectionType, id),
+		)
+	}
+	sr.data[collectionType] = append(res[:foundIndex], res[foundIndex+1:]...)
+	return id, nil
+}
+
+func (sr *StateRepository) generateNextID(collection []domain.Record) string {
+	maxID := 0
+	for _, record := range collection {
+		if id, ok := record["id"].(int); ok {
+			if id > maxID {
+				maxID = id
+			}
+		} else if idStr, ok := record["id"].(string); ok {
+			if id, err := strconv.Atoi(idStr); err == nil && id > maxID {
+				maxID = id
+			}
+		}
+	}
+
+	return strconv.Itoa(maxID + 1)
+}
+
+func matchesAllFilters(record domain.Record, filters []domain.Filter) (bool, error) {
+	for _, filter := range filters {
+		fieldValue, exists := record[filter.Field]
+		if !exists {
+			return false, nil
+		}
+
+		// pass always a string for less complex validation in filter func
+		matches, err := filter.Matches(fmt.Sprintf("%v", fieldValue))
+		if err != nil {
+			return false, err
+		}
+		if !matches {
+			return false, nil
+		}
+	}
+
+	return true, nil
+}
